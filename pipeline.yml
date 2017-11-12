@@ -1,0 +1,50 @@
+Resources:
+  CfnNag:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${Namespace}-pipeline-${ServiceName}-cfn_nag
+      Description: Run cfn_nag
+      ServiceRole: !Ref CodeBuildCIRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ruby:2.3.1
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Sub |
+          version: 0.2
+          phases:
+            install:
+              commands:
+                gem install cfn-nag
+            build:
+              commands:
+                - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
+                - chmod +rx /usr/bin/mu
+                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam env up ${AcptEnv} || echo "Skipping update of environment"
+                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam db up ${AcptEnv} || echo "Skipping update of database"
+                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam svc deploy ${AcptEnv}
+          artifacts:
+            files:
+              - '**/*'
+      TimeoutInMinutes: 30
+  Pipeline:
+    Properties:
+      Stages:
+        Fn::Splice:
+          - 1
+          - 1
+          - Actions: 
+            - Name: cfn_nag
+              ActionTypeId:
+                Category: Test
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              InputArtifacts:
+              - Name: SourceOutput
+              Configuration:
+                ProjectName: !Ref CodeBuildArtifact
+              RunOrder: 1
