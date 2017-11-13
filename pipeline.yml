@@ -1,10 +1,13 @@
 Resources:
-  CfnNag:
+  CfnNagAcpt:
     Type: AWS::CodeBuild::Project
+    Condition: IsAcptEnabled
     Properties:
-      Name: !Sub ${Namespace}-pipeline-${ServiceName}-cfn_nag
+      Name: 
+        Fn::Sub: ${Namespace}-pipeline-${ServiceName}-cfn_nag_acpt
       Description: Run cfn_nag
-      ServiceRole: !Ref CodeBuildCIRoleArn
+      ServiceRole: 
+        Ref: CodeBuildCIRoleArn
       Artifacts:
         Type: CODEPIPELINE
       Environment:
@@ -13,38 +16,98 @@ Resources:
         Image: aws/codebuild/ruby:2.3.1
       Source:
         Type: CODEPIPELINE
-        BuildSpec: !Sub |
-          version: 0.2
-          phases:
-            install:
-              commands:
-                gem install cfn-nag
-            build:
-              commands:
-                - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
-                - chmod +rx /usr/bin/mu
-                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam env up ${AcptEnv} || echo "Skipping update of environment"
-                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam db up ${AcptEnv} || echo "Skipping update of database"
-                - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam svc deploy ${AcptEnv}
-          artifacts:
-            files:
-              - '**/*'
+        BuildSpec: 
+          Fn::Sub: |
+            version: 0.2
+            phases:
+              install:
+                commands:
+                  gem install cfn-nag
+              build:
+                commands:
+                  - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
+                  - chmod +rx /usr/bin/mu
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam env up ${AcptEnv} || echo "Skipping update of environment"
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam db up ${AcptEnv} || echo "Skipping update of database"
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam svc deploy ${AcptEnv}
+                  - find /tmp/mu-cloudformation -name "template-*.yml" -exec echo \{\} \; -exec cfn_nag \{\} \;
+            artifacts:
+              files:
+                - '**/*'
+      TimeoutInMinutes: 30
+  CfnNagProd:
+    Type: AWS::CodeBuild::Project
+    Condition: IsProdEnabled
+    Properties:
+      Name: 
+        Fn::Sub: ${Namespace}-pipeline-${ServiceName}-cfn_nag_prod
+      Description: Run cfn_nag
+      ServiceRole: 
+        Ref: CodeBuildCIRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/ruby:2.3.1
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: 
+          Fn::Sub: |
+            version: 0.2
+            phases:
+              install:
+                commands:
+                  gem install cfn-nag
+              build:
+                commands:
+                  - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
+                  - chmod +rx /usr/bin/mu
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam env up ${ProdEnv} || echo "Skipping update of environment"
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam db up ${ProdEnv} || echo "Skipping update of database"
+                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam svc deploy ${ProdEnv}
+                  - find /tmp/mu-cloudformation -name "template-*.yml" -exec echo \{\} \; -exec cfn_nag \{\} \;
+            artifacts:
+              files:
+                - '**/*'
       TimeoutInMinutes: 30
   Pipeline:
     Properties:
       Stages:
         Fn::Splice:
-          - 1
-          - 1
-          - Actions: 
-            - Name: cfn_nag
-              ActionTypeId:
-                Category: Test
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              InputArtifacts:
-              - Name: SourceOutput
-              Configuration:
-                ProjectName: !Ref CodeBuildArtifact
-              RunOrder: 1
+          - 2 
+          - 2 
+          - - Fn::If:
+                Fn::Splice:
+                  - 1
+                  - 1
+                  - - Actions: 
+                      - Name: CfnNag
+                        ActionTypeId:
+                          Category: Test
+                          Owner: AWS
+                          Version: '1'
+                          Provider: CodeBuild
+                        InputArtifacts:
+                        - Name: SourceOutput
+                        Configuration:
+                          ProjectName: 
+                            Ref: CfnNagAcpt
+                        RunOrder: 1
+            - Fn::If:
+                Fn::Splice:
+                  - 1
+                  - 1
+                  - - Actions: 
+                      - Name: CfnNag
+                        ActionTypeId:
+                          Category: Test
+                          Owner: AWS
+                          Version: '1'
+                          Provider: CodeBuild
+                        InputArtifacts:
+                        - Name: SourceOutput
+                        Configuration:
+                          ProjectName: 
+                            Ref: CfnNagProd
+                        RunOrder: 1
