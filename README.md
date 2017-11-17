@@ -1,4 +1,4 @@
-![mu-cfn_nag](logo.png)
+![mu-cfn_nag](mu-cfn_nag.png)
 
 # Overview
 
