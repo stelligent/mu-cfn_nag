@@ -1,4 +1,4 @@
-![mu-cfn_nag](https://github.com/stelligent/mu-cfn_nag/mu-cfn_nag.png)
+![mu-cfn_nag](mu-cfn_nag.png)
 
 # Overview
 
