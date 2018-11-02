@@ -27,10 +27,10 @@ Resources:
                 commands:
                   - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
                   - chmod +rx /usr/bin/mu
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam env up ${AcptEnv} || echo "Skipping update of environment"
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam db up ${AcptEnv} || echo "Skipping update of database"
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam svc deploy ${AcptEnv}
-                  - find /tmp/mu-cloudformation -name "template-*.yml" -print0 | xargs -0 -n1 cfn_nag
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam env up ${AcptEnv} || echo "Skipping update of environment"
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam db up ${AcptEnv} || echo "Skipping update of database"
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuAcptRoleArn} --disable-iam svc deploy ${AcptEnv}
+                  - find /tmp/mu-dryrun -name "template-*.yml" -print0 | xargs -0 -n1 cfn_nag
             artifacts:
               files:
                 - '**/*'
@@ -63,10 +63,10 @@ Resources:
                 commands:
                   - curl -sL ${MuDownloadBaseurl}/v${MuDownloadVersion}/${MuDownloadFile} -o /usr/bin/mu
                   - chmod +rx /usr/bin/mu
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam env up ${ProdEnv} || echo "Skipping update of environment"
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam db up ${ProdEnv} || echo "Skipping update of database"
-                  - mu -c ${MuFile} --dryrun --assume-role ${MuProdRoleArn} --disable-iam svc deploy ${ProdEnv}
-                  - find /tmp/mu-cloudformation -name "template-*.yml" -exec echo \{\} \; -exec cfn_nag \{\} \;
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuProdRoleArn} --disable-iam env up ${ProdEnv} || echo "Skipping update of environment"
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuProdRoleArn} --disable-iam db up ${ProdEnv} || echo "Skipping update of database"
+                  - mu -c ${MuBasedir}/${MuFilename} --dryrun --assume-role ${MuProdRoleArn} --disable-iam svc deploy ${ProdEnv}
+                  - find /tmp/mu-dryrun -name "template-*.yml" -exec echo \{\} \; -exec cfn_nag \{\} \;
             artifacts:
               files:
                 - '**/*'
